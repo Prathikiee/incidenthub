@@ -11,6 +11,7 @@ backend_dir = Path(__file__).resolve().parents[1]
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
+import app.models  # noqa: F401
 from app.core.config import settings
 from app.db.base import Base
 

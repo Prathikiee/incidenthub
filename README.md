@@ -6,18 +6,44 @@ IncidentHub shifts the incident response paradigm from superficial ticket tracki
 
 ---
 
-## Current Status: Milestone 1 (Foundation)
+## Current Status: Milestone 2 (Core Domain Foundation)
 
-Milestone 1 establishes the repository architecture foundation, core service skeletons, quality tooling, database connectivity, and containerized development infrastructure.
+Milestone 2 establishes the foundational relational domain model and multi-tenant schema in PostgreSQL, supported by SQLAlchemy 2.x, Alembic, Pydantic v2 schemas, thin FastAPI endpoints, and service-layer encapsulation.
 
-| Area | Milestone 1 Foundation | Status | Planned for Later Milestones |
+| Area | Milestone 2 Foundation | Status | Planned for Later Milestones |
 | :--- | :--- | :--- | :--- |
-| **Architecture** | Modular Monolith (Clear Boundaries) | Ready | Asynchronous workers, event-driven pipelines |
-| **Frontend** | Next.js (App Router), React 19, TypeScript, Tailwind CSS | Ready | shadcn/ui, TanStack Query, Zustand, React Flow |
-| **Backend** | FastAPI, Pydantic v2, SQLAlchemy 2.x, Alembic | Ready | Domain entities, Celery tasks, WebSockets |
-| **Database** | PostgreSQL 16 connection pool & Alembic migration plumbing | Ready | pgvector, incident schema, evidence tables |
-| **Orchestration**| Docker Compose (frontend, backend, postgres) | Ready | Redis, Prometheus, Grafana, OpenTelemetry |
-| **Code Quality** | Ruff, MyPy, ESLint, Prettier, Pytest, Node Test Runner | Ready | Vitest, Playwright, CI release automation |
+| **Domain Model** | Organizations, Users, Memberships, Teams, Services, Dependencies | **Ready** | Incidents, Timelines, Hypotheses, Decisions, Evidence |
+| **Multi-Tenancy** | Organization-scoped isolation & composite foreign keys | **Ready** | Auth-token tenant guards, scoped RBAC claims |
+| **Service Graph** | Directed service dependencies with DB-level tenant enforcement | **Ready** | Temporal graph versioning, React Flow canvas |
+| **Migrations** | Alembic migration `39ae0ff14533` (tested upgrade/downgrade) | **Ready** | Incremental incident tables & indices |
+| **Backend API** | Versioned REST endpoints under `/api/v1` with validation | **Ready** | Authentication (JWT/OAuth), WebSockets |
+| **Frontend** | Domain foundation status component & typed API client | **Ready** | Incident dashboard, interactive canvas |
+| **Quality** | Ruff, MyPy (strict), Pytest (28 tests), ESLint, Prettier | **Passing** | Integration test coverage, Playwright |
+
+---
+
+## Core Domain Model
+
+PostgreSQL serves as the single source of truth for all operational entities and topologies:
+
+```
+Organization (Tenant Boundary)
+  ├── OrganizationMembership (OWNER, ADMIN, MEMBER, VIEWER)
+  │     └── User (Email, Display Name)
+  ├── Team (Squad / Grouping)
+  │     └── TeamMembership (Organization-verified User)
+  ├── Service (Software Component / Microservice)
+  └── ServiceDependency (Directed Graph Edge: Source -> Target)
+```
+
+### Relational & Multi-Tenant Guarantees
+- **Tenant Isolation**: All tenant resources reference `organization_id` with foreign key cascade rules.
+- **Service Dependency Integrity**:
+  - `source_service_id != target_service_id` enforced by database check constraint.
+  - Dependencies cannot cross organizations: guaranteed at the database level via composite foreign keys referencing `services(id, organization_id)`.
+  - Duplicate relationships prevented by unique constraints.
+- **User Normalization**: User emails are validated, stripped, and normalized to lowercase.
+- **Reversible Migrations**: Migration revision `39ae0ff14533` creates all 7 tables and enums, and is verified for reversible downgrade/upgrade.
 
 ---
 
@@ -29,40 +55,41 @@ incidenthub/
 │   └── workflows/
 │       └── ci.yml               # Automated CI for lint, type checks, tests, and build
 ├── backend/
-│   ├── alembic/                 # Database migration scripts and configuration
+│   ├── alembic/                 # Database migrations (env.py, versions/)
 │   ├── app/
 │   │   ├── api/
-│   │   │   └── v1/              # Versioned API routes (/api/v1)
-│   │   ├── core/                # Application settings and Pydantic configuration
-│   │   ├── db/                  # SQLAlchemy 2.x DeclarativeBase and asyncpg session
-│   │   ├── models/              # Database models (domain models planned for M2)
-│   │   ├── schemas/             # Pydantic validation schemas
-│   │   ├── services/            # Domain business logic services
-│   │   └── main.py              # FastAPI entrypoint (/health, CORS, /api/v1 router)
-│   ├── tests/                   # Pytest test suite (health checks, client fixtures)
+│   │   │   └── v1/              # Versioned API routes (orgs, users, teams, services)
+│   │   ├── core/                # Settings and domain exceptions
+│   │   ├── db/                  # Base DeclarativeBase and async session factory
+│   │   ├── models/              # SQLAlchemy 2.x declarative models
+│   │   ├── schemas/             # Pydantic v2 validation schemas
+│   │   ├── services/            # Domain service logic (organization, user, team, service)
+│   │   └── main.py              # FastAPI entrypoint, exception handlers, and CORS
+│   ├── tests/                   # Pytest suite (health, orgs, users, teams, services, migrations)
 │   ├── pyproject.toml           # Backend dependencies, Ruff, MyPy, and Pytest config
 │   └── .env.example             # Backend environment template
 ├── frontend/
 │   ├── app/                     # Next.js App Router (layout.tsx, page.tsx, globals.css)
-│   ├── components/              # Reusable UI components (BackendStatus, Header, etc.)
-│   ├── lib/                     # API client utilities and health probe helpers
+│   ├── components/              # UI components (BackendStatus, DomainFoundationStatus)
+│   ├── lib/                     # Typed API client (organizations, users, status)
 │   ├── public/                  # Static assets
-│   ├── tests/                   # Frontend foundation tests
+│   ├── tests/                   # Frontend unit tests
 │   ├── package.json             # Next.js scripts and dependencies
 │   ├── tsconfig.json            # TypeScript configuration
 │   └── .env.example             # Frontend environment template
 ├── docs/
 │   ├── architecture/
-│   │   └── system-architecture.md   # Architectural design, boundaries, and roadmap
+│   │   └── system-architecture.md   # System architecture, ER diagram, roadmap
 │   └── decisions/
-│       └── ADR-001-modular-monolith-foundation.md # Foundational architectural decision
+│       ├── ADR-001-modular-monolith-foundation.md
+│       └── ADR-002-core-domain-foundation-and-multi-tenancy.md
 ├── infrastructure/
 │   └── docker/
 │       ├── backend.Dockerfile   # Python 3.12-slim development image
 │       └── frontend.Dockerfile  # Node 24-alpine development image
 ├── .env.example                 # Root environment variables template
 ├── .gitignore                   # Multi-language root ignore rules
-├── docker-compose.yml           # Local multi-service development compose
+├── docker-compose.yml           # Multi-container orchestration (postgres, backend, frontend)
 ├── LICENSE                      # MIT License
 └── README.md                    # Project documentation
 ```
@@ -71,9 +98,7 @@ incidenthub/
 
 ## Getting Started: Local Development
 
-You can run IncidentHub either using **Docker Compose** (recommended for full environment parity) or **independently** on your host machine.
-
-### Option A: Docker Compose (All Services)
+### Option A: Docker Compose (Recommended)
 
 1. **Clone the repository and enter the directory**:
    ```bash
@@ -87,117 +112,104 @@ You can run IncidentHub either using **Docker Compose** (recommended for full en
 
 3. **Build and start all services**:
    ```bash
-   docker compose up --build
+   docker compose up --build -d
    ```
 
-4. **Access the services**:
+4. **Run database migrations inside the backend container**:
+   ```bash
+   docker compose exec backend alembic upgrade head
+   ```
+
+5. **Access the services**:
    - **Frontend UI**: [http://localhost:3000](http://localhost:3000)
    - **Backend API**: [http://localhost:8000](http://localhost:8000)
-   - **Backend Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
    - **Interactive API Docs (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
    - **PostgreSQL**: `localhost:5432` (`user: postgres`, `db: incidenthub`)
 
 ---
 
-### Option B: Running Services Independently
+### Option B: Running Services Locally
 
 #### 1. Backend Service (FastAPI)
 
-Prerequisites: Python 3.11+ (Python 3.12 recommended).
+Prerequisites: Python 3.11+ and running PostgreSQL 16 container.
 
 ```bash
 cd backend
-
-# Create and activate virtual environment
 python -m venv .venv
 
-# On Windows (PowerShell):
+# On Windows:
 .\.venv\Scripts\Activate.ps1
-# On Linux / macOS:
+# On Linux/macOS:
 source .venv/bin/activate
 
-# Install dependencies in editable mode with development tools
 pip install -e ".[dev]"
-
-# (Optional) Copy environment template
 cp .env.example .env
+
+# Run database migrations
+alembic upgrade head
 
 # Start FastAPI development server
 uvicorn app.main:app --reload --port 8000
 ```
 
-Verify backend health:
-```bash
-curl http://localhost:8000/health
-# {"status":"ok"}
-```
-
 #### 2. Frontend Application (Next.js)
-
-Prerequisites: Node.js 20+ (Node.js 24 recommended).
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm ci
-
-# (Optional) Copy environment template
-cp .env.example .env.local
-
-# Start Next.js development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
+
+---
+
+## API Endpoints Overview
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/health` | Service liveness probe |
+| `GET` | `/api/v1/health` | Versioned operational health |
+| `POST` | `/api/v1/organizations` | Create an organization (unique slug) |
+| `GET` | `/api/v1/organizations` | List all organizations |
+| `GET` | `/api/v1/organizations/{id}` | Get organization by ID |
+| `POST` | `/api/v1/organizations/{id}/members` | Add member to organization |
+| `GET` | `/api/v1/organizations/{id}/members` | List organization members |
+| `POST` | `/api/v1/users` | Register user (normalized email) |
+| `GET` | `/api/v1/users` | List registered users |
+| `GET` | `/api/v1/users/{id}` | Get user by ID |
+| `POST` | `/api/v1/organizations/{id}/teams` | Create team in organization |
+| `GET` | `/api/v1/organizations/{id}/teams` | List teams in organization |
+| `GET` | `/api/v1/organizations/{id}/teams/{team_id}` | Get team details |
+| `POST` | `/api/v1/organizations/{id}/teams/{team_id}/members` | Assign member to team |
+| `GET` | `/api/v1/organizations/{id}/teams/{team_id}/members` | List team members |
+| `POST` | `/api/v1/organizations/{id}/services` | Register service in organization |
+| `GET` | `/api/v1/organizations/{id}/services` | List organization services |
+| `GET` | `/api/v1/organizations/{id}/services/{service_id}` | Get service details |
+| `POST` | `/api/v1/organizations/{id}/service-dependencies` | Declare directed dependency |
+| `GET` | `/api/v1/organizations/{id}/service-dependencies` | List service dependencies |
 
 ---
 
 ## Testing & Quality Assurance
 
-Both frontend and backend include automated linting, type-checking, and test verification.
-
 ### Backend Verification
-
 ```bash
 cd backend
-
-# Run unit tests
-pytest
-
-# Run Ruff linter and formatter checks
-ruff check .
-ruff format --check .
-
-# Run static type checking
-mypy app
+pytest                                # Run full test suite (28 tests)
+ruff check .                          # Linter checks
+ruff format --check .                 # Formatter checks
+mypy app tests                        # Strict static type checking
 ```
 
 ### Frontend Verification
-
 ```bash
 cd frontend
-
-# Run unit / foundation tests
-npm test
-
-# Run ESLint
-npm run lint
-
-# Run Prettier code formatting check
-npm run format:check
-
-# Compile production build
-npm run build
+npm test                              # Run unit tests
+npm run lint                          # Run ESLint
+npm run format:check                  # Prettier checks
 ```
-
----
-
-## Security Principles
-
-- **Zero Committed Secrets**: All secrets and credentials are managed via environment variables. `.env.example` templates contain only non-secret placeholders.
-- **Backend Authorization Authority**: The backend is the sole source of truth for business logic, validation, and access control.
-- **Tenant Isolation Readiness**: The modular monolith foundation is architected for clean tenant boundaries and role-based access control (RBAC).
 
 ---
 

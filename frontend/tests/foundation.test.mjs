@@ -29,4 +29,27 @@ test("IncidentHub Frontend Foundation - Page Configuration", () => {
 
   const content = fs.readFileSync(pageFile, "utf-8");
   assert.match(content, /IncidentHub/, "Landing page must identify the project as IncidentHub");
+  assert.match(
+    content,
+    /DomainFoundationStatus/,
+    "Landing page must include DomainFoundationStatus component"
+  );
+});
+
+test("IncidentHub Frontend Foundation - Core Domain API Client and Components", () => {
+  const root = path.resolve(__dirname, "..");
+  const apiFile = path.join(root, "lib", "api.ts");
+  assert.ok(fs.existsSync(apiFile), "api.ts must exist");
+
+  const apiContent = fs.readFileSync(apiFile, "utf-8");
+  assert.match(apiContent, /fetchOrganizations/, "api.ts must export fetchOrganizations");
+  assert.match(apiContent, /fetchUsers/, "api.ts must export fetchUsers");
+  assert.match(
+    apiContent,
+    /fetchDomainFoundationStatus/,
+    "api.ts must export fetchDomainFoundationStatus"
+  );
+
+  const domainStatusComp = path.join(root, "components", "DomainFoundationStatus.tsx");
+  assert.ok(fs.existsSync(domainStatusComp), "DomainFoundationStatus.tsx component must exist");
 });

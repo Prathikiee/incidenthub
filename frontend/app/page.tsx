@@ -1,4 +1,5 @@
 import { BackendStatus } from "@/components/BackendStatus";
+import { DomainFoundationStatus } from "@/components/DomainFoundationStatus";
 
 export default function Home() {
   return (
@@ -13,7 +14,7 @@ export default function Home() {
             <div>
               <span className="text-lg font-bold tracking-tight text-white">IncidentHub</span>
               <span className="ml-2.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-400">
-                Milestone 1 • Foundation
+                Milestone 2 • Core Domain Foundation
               </span>
             </div>
           </div>
@@ -55,13 +56,16 @@ export default function Home() {
           <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
             Live Development Connectivity
           </div>
-          <BackendStatus />
+          <div className="flex flex-col gap-3">
+            <BackendStatus />
+            <DomainFoundationStatus />
+          </div>
         </section>
 
         {/* Architecture Foundation Grid */}
         <section className="mb-14">
           <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Milestone 1 Architecture Foundation
+            Milestone 2 Domain Foundation
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             {/* Frontend Card */}
@@ -102,8 +106,8 @@ export default function Home() {
               </div>
               <h3 className="text-base font-semibold text-white mb-2">PostgreSQL + SQLAlchemy</h3>
               <p className="text-xs leading-relaxed text-slate-400 mb-3">
-                SQLAlchemy 2.x asyncpg connection pool and Alembic migration foundation. Zero
-                premature business tables.
+                SQLAlchemy 2.x asyncpg and Alembic migrations for Organizations, Users, Teams,
+                Services, and Service Dependencies.
               </p>
               <div className="text-[11px] font-mono text-slate-500">
                 Port: 5432 • Environment-configured
@@ -180,7 +184,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-500">
         <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div>IncidentHub • Milestone 1 Architecture Foundation</div>
+          <div>IncidentHub • Milestone 2 Core Domain Foundation</div>
           <div>MIT License • Production-Grade Modular Monolith</div>
         </div>
       </footer>
