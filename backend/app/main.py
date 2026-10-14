@@ -10,9 +10,12 @@ from fastapi.responses import JSONResponse
 from app.api.v1.router import api_v1_router
 from app.core.config import settings
 from app.core.exceptions import (
+    AuthenticationError,
     DomainValidationError,
     DuplicateEntityError,
     EntityNotFoundError,
+    PermissionDeniedError,
+    TenantContextMissingError,
 )
 from app.schemas.health import HealthResponse
 
@@ -58,6 +61,36 @@ async def duplicate_entity_handler(request: Request, exc: DuplicateEntityError) 
 @app.exception_handler(DomainValidationError)
 async def domain_validation_handler(request: Request, exc: DomainValidationError) -> JSONResponse:
     """Handle business rule / invariant violations with HTTP 400 Bad Request."""
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": exc.message},
+    )
+
+
+@app.exception_handler(AuthenticationError)
+async def authentication_handler(request: Request, exc: AuthenticationError) -> JSONResponse:
+    """Handle authentication domain exceptions with HTTP 401 Unauthorized."""
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={"detail": exc.message},
+        headers=exc.headers,
+    )
+
+
+@app.exception_handler(PermissionDeniedError)
+async def permission_denied_handler(request: Request, exc: PermissionDeniedError) -> JSONResponse:
+    """Handle permission denied domain exceptions with HTTP 403 Forbidden."""
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
+        content={"detail": exc.message},
+    )
+
+
+@app.exception_handler(TenantContextMissingError)
+async def tenant_context_missing_handler(
+    request: Request, exc: TenantContextMissingError
+) -> JSONResponse:
+    """Handle missing tenant context domain exceptions with HTTP 400 Bad Request."""
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": exc.message},

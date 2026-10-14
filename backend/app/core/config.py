@@ -1,4 +1,6 @@
-from pydantic import computed_field
+from typing import Literal, Self
+
+from pydantic import computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +23,36 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
+
+    # JWT & Authentication
+    JWT_SECRET_KEY: str = "dev-insecure-secret-key-change-in-production-min32chars"
+    JWT_ALGORITHM: Literal["HS256"] = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    @model_validator(mode="after")
+    def validate_security_settings(self) -> Self:
+        is_test_env = self.ENVIRONMENT.lower() in ("test", "testing")
+        if not is_test_env:
+            if len(self.JWT_SECRET_KEY) < 32:
+                raise ValueError(
+                    "JWT_SECRET_KEY must be at least 32 characters (256 bits) in non-test environments"
+                )
+            if self.ENVIRONMENT.lower() in ("production", "staging", "prod"):
+                if (
+                    "dev-insecure" in self.JWT_SECRET_KEY.lower()
+                    or "change-in-production" in self.JWT_SECRET_KEY.lower()
+                ):
+                    raise ValueError(
+                        "JWT_SECRET_KEY must not use development default values in production or staging environments"
+                    )
+
+        if self.ACCESS_TOKEN_EXPIRE_MINUTES <= 0:
+            raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES must be greater than 0")
+        if self.REFRESH_TOKEN_EXPIRE_DAYS <= 0:
+            raise ValueError("REFRESH_TOKEN_EXPIRE_DAYS must be greater than 0")
+
+        return self
 
     # Database settings
     POSTGRES_SERVER: str = "localhost"

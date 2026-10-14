@@ -1,6 +1,6 @@
 """Pytest test configuration and fixtures."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -74,3 +74,39 @@ async def client() -> AsyncIterator[AsyncClient]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         yield client
+
+
+@pytest.fixture
+def auth_headers() -> Callable[[str], dict[str, str]]:
+    """Return a helper that formats an Authorization Bearer header for a given token string."""
+
+    def _headers(token: str) -> dict[str, str]:
+        return {"Authorization": f"Bearer {token}"}
+
+    return _headers
+
+
+@pytest.fixture
+def test_jwt_settings(monkeypatch: pytest.MonkeyPatch) -> dict[str, str | int]:
+    """Provide verified test-specific JWT settings with high-entropy test secret."""
+    test_secret = "test-secret-key-with-sufficient-entropy-for-testing-256bits"
+    monkeypatch.setattr(settings, "JWT_SECRET_KEY", test_secret)
+    monkeypatch.setattr(settings, "JWT_ALGORITHM", "HS256")
+    monkeypatch.setattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 15)
+    monkeypatch.setattr(settings, "REFRESH_TOKEN_EXPIRE_DAYS", 7)
+    return {
+        "JWT_SECRET_KEY": test_secret,
+        "JWT_ALGORITHM": "HS256",
+        "ACCESS_TOKEN_EXPIRE_MINUTES": 15,
+        "REFRESH_TOKEN_EXPIRE_DAYS": 7,
+    }
+
+
+@pytest.fixture
+def sample_user_data() -> dict[str, str]:
+    """Provide sample user registration and credential data meeting password policy."""
+    return {
+        "email": "test.responder@incidenthub.io",
+        "password": "StrongPassword123!",
+        "display_name": "Test Responder",
+    }
