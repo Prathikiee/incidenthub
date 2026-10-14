@@ -1,6 +1,7 @@
 """Service layer package."""
 
 from app.services import (
+    auth_service,
     membership_service,
     organization_service,
     service_registry_service,
@@ -9,6 +10,7 @@ from app.services import (
 )
 
 __all__ = [
+    "auth_service",
     "membership_service",
     "organization_service",
     "service_registry_service",

@@ -10,6 +10,7 @@ from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.membership import OrganizationMembership, TeamMembership
+    from app.models.refresh_token import RefreshToken
 
 
 class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -24,6 +25,11 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
     )
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    hashed_password: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        default=None,
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relationships
@@ -34,6 +40,11 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     team_memberships: Mapped[list["TeamMembership"]] = relationship(
         "TeamMembership",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        "RefreshToken",
         back_populates="user",
         cascade="all, delete-orphan",
     )

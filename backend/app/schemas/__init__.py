@@ -1,5 +1,14 @@
 """Pydantic schemas package for IncidentHub."""
 
+from app.schemas.auth import (
+    LoginRequest,
+    LogoutRequest,
+    RefreshTokenRequest,
+    RefreshTokenResponse,
+    RegisterRequest,
+    TokenPayload,
+    TokenResponse,
+)
 from app.schemas.health import HealthResponse
 from app.schemas.membership import (
     OrganizationMembershipBase,
@@ -37,6 +46,8 @@ from app.schemas.user import (
 
 __all__ = [
     "HealthResponse",
+    "LoginRequest",
+    "LogoutRequest",
     "OrganizationBase",
     "OrganizationCreate",
     "OrganizationMembershipBase",
@@ -44,6 +55,9 @@ __all__ = [
     "OrganizationMembershipRead",
     "OrganizationRead",
     "OrganizationUpdate",
+    "RefreshTokenRequest",
+    "RefreshTokenResponse",
+    "RegisterRequest",
     "ServiceBase",
     "ServiceCreate",
     "ServiceDependencyCreate",
@@ -56,6 +70,8 @@ __all__ = [
     "TeamMembershipRead",
     "TeamRead",
     "TeamUpdate",
+    "TokenPayload",
+    "TokenResponse",
     "UserBase",
     "UserCreate",
     "UserRead",

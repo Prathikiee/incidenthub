@@ -18,6 +18,7 @@ from app.models.membership import (
     TeamMembership,
 )
 from app.models.organization import Organization
+from app.models.refresh_token import RefreshToken
 from app.models.service import Service, ServiceDependency
 from app.models.team import Team
 from app.models.user import User
@@ -27,6 +28,7 @@ __all__ = [
     "Organization",
     "OrganizationMembership",
     "OrganizationRole",
+    "RefreshToken",
     "Service",
     "ServiceDependency",
     "Team",
