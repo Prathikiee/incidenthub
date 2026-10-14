@@ -1,10 +1,15 @@
-"""Service and ServiceDependency API endpoints."""
+"""Service and ServiceDependency API endpoints with organization authorization guards."""
 
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.authorization import (
+    OrganizationContext,
+    get_organization_context,
+    require_member,
+)
 from app.db.session import get_db
 from app.schemas.service import (
     ServiceCreate,
@@ -24,12 +29,12 @@ router = APIRouter(prefix="/organizations/{organization_id}", tags=["services"])
     summary="Create Service",
 )
 async def create_service_endpoint(
-    organization_id: UUID,
     data: ServiceCreate,
+    ctx: OrganizationContext = Depends(require_member),
     db: AsyncSession = Depends(get_db),
 ) -> ServiceRead:
-    """Register a new service within an organization."""
-    service = await service_registry_service.create_service(db, organization_id, data)
+    """Register a new service within an organization. Requires MEMBER, ADMIN, or OWNER role."""
+    service = await service_registry_service.create_service(db, ctx.organization.id, data)
     return ServiceRead.model_validate(service)
 
 
@@ -39,11 +44,11 @@ async def create_service_endpoint(
     summary="List Services",
 )
 async def list_services_endpoint(
-    organization_id: UUID,
+    ctx: OrganizationContext = Depends(get_organization_context),
     db: AsyncSession = Depends(get_db),
 ) -> list[ServiceRead]:
-    """List all services belonging to an organization."""
-    services = await service_registry_service.list_services(db, organization_id)
+    """List all services belonging to an organization. Accessible to any active member."""
+    services = await service_registry_service.list_services(db, ctx.organization.id)
     return [ServiceRead.model_validate(s) for s in services]
 
 
@@ -53,12 +58,12 @@ async def list_services_endpoint(
     summary="Get Service",
 )
 async def get_service_endpoint(
-    organization_id: UUID,
     service_id: UUID,
+    ctx: OrganizationContext = Depends(get_organization_context),
     db: AsyncSession = Depends(get_db),
 ) -> ServiceRead:
-    """Retrieve service details scoped to an organization."""
-    service = await service_registry_service.get_service(db, organization_id, service_id)
+    """Retrieve service details scoped to an organization. Rejects cross-tenant access."""
+    service = await service_registry_service.get_service(db, ctx.organization.id, service_id)
     return ServiceRead.model_validate(service)
 
 
@@ -69,16 +74,15 @@ async def get_service_endpoint(
     summary="Create Service Dependency",
 )
 async def create_service_dependency_endpoint(
-    organization_id: UUID,
     data: ServiceDependencyCreate,
+    ctx: OrganizationContext = Depends(require_member),
     db: AsyncSession = Depends(get_db),
 ) -> ServiceDependencyRead:
     """Declare a directed dependency relationship between two services in an organization.
 
-    Interpretation:
-        source_service_id depends on target_service_id
+    Requires MEMBER, ADMIN, or OWNER role. Cross-tenant dependencies are physically rejected.
     """
-    dep = await service_registry_service.create_service_dependency(db, organization_id, data)
+    dep = await service_registry_service.create_service_dependency(db, ctx.organization.id, data)
     return ServiceDependencyRead.model_validate(dep)
 
 
@@ -88,9 +92,9 @@ async def create_service_dependency_endpoint(
     summary="List Service Dependencies",
 )
 async def list_service_dependencies_endpoint(
-    organization_id: UUID,
+    ctx: OrganizationContext = Depends(get_organization_context),
     db: AsyncSession = Depends(get_db),
 ) -> list[ServiceDependencyRead]:
-    """List all service dependencies within an organization."""
-    deps = await service_registry_service.list_service_dependencies(db, organization_id)
+    """List all service dependencies within an organization. Accessible to any active member."""
+    deps = await service_registry_service.list_service_dependencies(db, ctx.organization.id)
     return [ServiceDependencyRead.model_validate(d) for d in deps]

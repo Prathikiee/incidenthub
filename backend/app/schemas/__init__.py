@@ -14,6 +14,7 @@ from app.schemas.membership import (
     OrganizationMembershipBase,
     OrganizationMembershipCreate,
     OrganizationMembershipRead,
+    OrganizationMembershipUpdate,
     TeamMembershipCreate,
     TeamMembershipRead,
 )
@@ -53,6 +54,7 @@ __all__ = [
     "OrganizationMembershipBase",
     "OrganizationMembershipCreate",
     "OrganizationMembershipRead",
+    "OrganizationMembershipUpdate",
     "OrganizationRead",
     "OrganizationUpdate",
     "RefreshTokenRequest",

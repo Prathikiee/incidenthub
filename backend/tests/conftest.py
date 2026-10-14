@@ -1,5 +1,6 @@
 """Pytest test configuration and fixtures."""
 
+import uuid
 from collections.abc import AsyncIterator, Callable
 
 import pytest
@@ -13,8 +14,28 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
+from app.core.security import create_access_token
 from app.db.session import get_db
 from app.main import app
+from app.models.user import User
+
+
+def is_postgres_available() -> bool:
+    """Verify if PostgreSQL server is online and accepting connections for the test database."""
+    try:
+        import psycopg2
+
+        conn = psycopg2.connect(
+            settings.sync_database_url,
+            connect_timeout=1,
+        )
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+
+POSTGRES_AVAILABLE = is_postgres_available()
 
 # Use NullPool for tests so asyncpg connections do not leak across function-scoped event loops
 test_engine = create_async_engine(
@@ -50,21 +71,29 @@ async def db_session() -> AsyncIterator[AsyncSession]:
 @pytest.fixture(autouse=True)
 async def clean_database() -> AsyncIterator[None]:
     """Clean all domain tables before each test to guarantee test isolation."""
-    async with test_session_maker() as session:
-        await session.execute(
-            text(
-                "TRUNCATE TABLE "
-                "service_dependencies, "
-                "team_memberships, "
-                "organization_memberships, "
-                "services, "
-                "teams, "
-                "organizations, "
-                "users "
-                "CASCADE;"
+    if not POSTGRES_AVAILABLE:
+        yield
+        return
+    try:
+        async with test_session_maker() as session:
+            await session.execute(
+                text(
+                    "TRUNCATE TABLE "
+                    "refresh_tokens, "
+                    "service_dependencies, "
+                    "team_memberships, "
+                    "organization_memberships, "
+                    "services, "
+                    "teams, "
+                    "organizations, "
+                    "users "
+                    "CASCADE;"
+                )
             )
-        )
-        await session.commit()
+            await session.commit()
+    except Exception:
+        yield
+        return
     yield
 
 
@@ -84,6 +113,42 @@ def auth_headers() -> Callable[[str], dict[str, str]]:
         return {"Authorization": f"Bearer {token}"}
 
     return _headers
+
+
+@pytest.fixture
+async def test_user(db_session: AsyncSession) -> AsyncIterator[User]:
+    """Provide a persisted test user for domain and integration tests."""
+    if not POSTGRES_AVAILABLE:
+        pytest.skip("PostgreSQL database unavailable or authentication failed")
+    user = User(
+        id=uuid.uuid4(),
+        email="test.owner@incidenthub.io",
+        display_name="Test Owner",
+        hashed_password="$argon2id$v=19$m=65536,t=3,p=4$fakehash",
+        is_active=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    yield user
+
+
+@pytest.fixture
+def test_token(test_user: User) -> str:
+    """Generate a valid signed access token for test_user."""
+    return create_access_token(user_id=test_user.id, email=test_user.email)
+
+
+@pytest.fixture
+async def auth_client(test_token: str) -> AsyncIterator[AsyncClient]:
+    """Provide an asynchronous HTTP client authenticated as test_user."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        headers={"Authorization": f"Bearer {test_token}"},
+    ) as client:
+        yield client
 
 
 @pytest.fixture

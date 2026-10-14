@@ -34,6 +34,12 @@ class OrganizationMembershipRead(OrganizationMembershipBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class OrganizationMembershipUpdate(BaseModel):
+    """Schema for updating an existing organization member's role."""
+
+    role: OrganizationRole = Field(..., description="New role assigned within the organization")
+
+
 class TeamMembershipCreate(BaseModel):
     """Schema for adding a member to a team."""
 
